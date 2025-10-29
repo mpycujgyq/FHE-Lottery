@@ -1,10 +1,22 @@
 import { useState } from "react";
+import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Sparkles, Lock } from "lucide-react";
+import { Sparkles, Lock, Loader2 } from "lucide-react";
+import { useLottery } from "@/hooks/useLottery";
+import { encryptLotteryNumbers, initializeFHE } from "@/lib/fhe";
+import { CONTRACTS } from "@/config/contracts";
+import { useToast } from "@/hooks/use-toast";
+import { formatEther } from "viem";
 
 const LotterySelector = () => {
+  const { address } = useAccount();
+  const { round, buyTicket, isPending, isConfirming } = useLottery(0); // Current round is 0
+  const { toast } = useToast();
+
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
+  const [isEncrypting, setIsEncrypting] = useState(false);
+
   const maxNumbers = 6;
   const totalNumbers = 49;
 
@@ -29,6 +41,93 @@ const LotterySelector = () => {
     setSelectedNumbers(numbers.sort((a, b) => a - b));
   };
 
+  const handleBuyTicket = async () => {
+    if (!address) {
+      toast({
+        title: "Wallet not connected",
+        description: "Please connect your wallet to buy a ticket",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!round) {
+      toast({
+        title: "Round not available",
+        description: "Cannot load current lottery round",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedNumbers.length !== maxNumbers) {
+      toast({
+        title: "Invalid selection",
+        description: `Please select exactly ${maxNumbers} numbers`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if round is still active
+    const now = Math.floor(Date.now() / 1000);
+    if (now >= round.endTime) {
+      toast({
+        title: "Round closed",
+        description: "This lottery round has ended",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsEncrypting(true);
+      toast({
+        title: "Encrypting your numbers...",
+        description: "Please wait while we encrypt your lottery ticket using FHE",
+      });
+
+      // Initialize FHE
+      await initializeFHE();
+
+      // Encrypt the lottery numbers
+      const { encryptedNumbers, proofs } = await encryptLotteryNumbers(
+        selectedNumbers,
+        CONTRACTS.FHELottery,
+        address
+      );
+
+      setIsEncrypting(false);
+
+      toast({
+        title: "Encryption complete!",
+        description: "Submitting your encrypted ticket to the blockchain...",
+      });
+
+      // Buy ticket on-chain
+      await buyTicket(encryptedNumbers, proofs, round.ticketPrice);
+
+      toast({
+        title: "Ticket purchased successfully!",
+        description: `Your lucky numbers: ${selectedNumbers.join(", ")}`,
+      });
+
+      // Clear selection
+      setSelectedNumbers([]);
+    } catch (error) {
+      console.error("Ticket purchase failed:", error);
+      setIsEncrypting(false);
+      toast({
+        title: "Purchase failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const isLoading = isPending || isConfirming || isEncrypting;
+  const ticketPrice = round?.ticketPrice || BigInt(10000000000000000); // 0.01 ETH default
+
   return (
     <section className="py-20 px-4">
       <div className="container max-w-6xl mx-auto">
@@ -40,6 +139,13 @@ const LotterySelector = () => {
             <Lock className="w-4 h-4" />
             Your selection is encrypted using FHE technology
           </p>
+          {round && (
+            <div className="mt-4 text-sm text-muted-foreground">
+              <p>{round.name}</p>
+              <p>Ends: {new Date(round.endTime * 1000).toLocaleString()}</p>
+              <p>Total tickets: {round.ticketCount} | Prize pool: {formatEther(round.prizePool)} ETH</p>
+            </div>
+          )}
         </div>
 
         <Card className="p-8 bg-card/50 backdrop-blur-sm border-primary/20">
@@ -48,17 +154,18 @@ const LotterySelector = () => {
               <span className="text-sm text-muted-foreground">
                 Selected: {selectedNumbers.length}/{maxNumbers}
               </span>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={quickPick}
+                disabled={isLoading}
                 className="border-primary/50 hover:bg-primary/10"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
                 Quick Pick
               </Button>
             </div>
-            
+
             <div className="flex gap-2 flex-wrap min-h-[60px] p-4 bg-muted/30 rounded-xl border border-primary/10">
               {selectedNumbers.map((num) => (
                 <div
@@ -76,14 +183,14 @@ const LotterySelector = () => {
               <button
                 key={num}
                 onClick={() => toggleNumber(num)}
-                disabled={!isSelected(num) && selectedNumbers.length >= maxNumbers}
+                disabled={(!isSelected(num) && selectedNumbers.length >= maxNumbers) || isLoading}
                 className={`
                   aspect-square rounded-full font-bold transition-all
                   ${isSelected(num)
                     ? 'bg-gradient-to-br from-primary to-amber-500 text-primary-foreground scale-110 shadow-[0_0_20px_rgba(255,215,0,0.4)]'
                     : 'bg-muted hover:bg-muted/80 text-foreground hover:scale-105'
                   }
-                  ${!isSelected(num) && selectedNumbers.length >= maxNumbers ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
+                  ${(!isSelected(num) && selectedNumbers.length >= maxNumbers) || isLoading ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
                 `}
               >
                 {num}
@@ -94,19 +201,29 @@ const LotterySelector = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
               <span className="text-sm">Ticket Price</span>
-              <span className="font-bold text-primary">0.01 ETH</span>
+              <span className="font-bold text-primary">{formatEther(ticketPrice)} ETH</span>
             </div>
-            
-            <Button 
+
+            <Button
               size="lg"
+              onClick={handleBuyTicket}
               className="w-full bg-gradient-to-r from-primary to-amber-500 hover:from-amber-500 hover:to-primary text-primary-foreground font-bold text-lg h-14 rounded-full shadow-[0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_rgba(255,215,0,0.5)] transition-all"
-              disabled={selectedNumbers.length !== maxNumbers}
+              disabled={selectedNumbers.length !== maxNumbers || isLoading || !address}
             >
-              {selectedNumbers.length === maxNumbers 
-                ? 'Buy Ticket (FHE Encrypted)' 
+              {isLoading && <Loader2 className="w-5 h-5 mr-2 animate-spin" />}
+              {isEncrypting ? 'Encrypting...' :
+               isPending || isConfirming ? 'Submitting...' :
+               selectedNumbers.length === maxNumbers
+                ? 'Buy Ticket (FHE Encrypted)'
                 : `Select ${maxNumbers - selectedNumbers.length} more number${maxNumbers - selectedNumbers.length !== 1 ? 's' : ''}`
               }
             </Button>
+
+            {!address && (
+              <p className="text-xs text-center text-muted-foreground">
+                Connect your wallet to buy tickets
+              </p>
+            )}
           </div>
         </Card>
       </div>
