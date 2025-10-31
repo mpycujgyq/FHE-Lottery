@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- FHE Lottery emblem: dual-color lottery balls (red & blue) -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B1016"/>
+      <stop offset="100%" stop-color="#0A0E14"/>
+    </linearGradient>
+    <radialGradient id="redBall" cx="30%" cy="30%">
+      <stop offset="0%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#DC2626"/>
+    </radialGradient>
+    <radialGradient id="blueBall" cx="30%" cy="30%">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </radialGradient>
+    <radialGradient id="goldBall" cx="30%" cy="30%">
+      <stop offset="0%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="128" height="128" rx="16" ry="16" fill="url(#bg)"/>
+
+  <!-- Lottery balls arranged in a circular pattern -->
+  <!-- Red balls (5) -->
+  <circle cx="32" cy="48" r="14" fill="url(#redBall)"/>
+  <circle cx="32" cy="48" r="14" fill="none" stroke="#991B1B" stroke-width="1.5"/>
+  <circle cx="64" cy="32" r="12" fill="url(#redBall)"/>
+  <circle cx="64" cy="32" r="12" fill="none" stroke="#991B1B" stroke-width="1.5"/>
+  <circle cx="96" cy="48" r="14" fill="url(#redBall)"/>
+  <circle cx="96" cy="48" r="14" fill="none" stroke="#991B1B" stroke-width="1.5"/>
+  <circle cx="48" cy="72" r="11" fill="url(#redBall)"/>
+  <circle cx="48" cy="72" r="11" fill="none" stroke="#991B1B" stroke-width="1.5"/>
+  <circle cx="80" cy="72" r="11" fill="url(#redBall)"/>
+  <circle cx="80" cy="72" r="11" fill="none" stroke="#991B1B" stroke-width="1.5"/>
+
+  <!-- Blue ball (1) - special/lucky ball -->
+  <circle cx="64" cy="96" r="16" fill="url(#blueBall)"/>
+  <circle cx="64" cy="96" r="16" fill="none" stroke="#1E3A8A" stroke-width="2"/>
+
+  <!-- Numbers on balls (simplified) -->
+  <text x="32" y="52" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white">7</text>
+  <text x="64" y="36" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="white">12</text>
+  <text x="96" y="52" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white">23</text>
+  <text x="48" y="76" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="white">31</text>
+  <text x="80" y="76" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="white">45</text>
+  <text x="64" y="101" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="white">8</text>
+
+  <!-- Accent ring -->
+  <rect x="6" y="6" width="116" height="116" rx="14" ry="14" fill="none" stroke="#F59E0B" stroke-width="2" opacity="0.6"/>
+</svg>
+

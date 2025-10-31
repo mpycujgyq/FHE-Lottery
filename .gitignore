@@ -43,3 +43,4 @@ coverage.json
 .cache/
 temp/
 tmp/
+.vercel

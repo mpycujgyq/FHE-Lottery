@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,14 +11,39 @@ import { formatEther } from "viem";
 
 const LotterySelector = () => {
   const { address } = useAccount();
-  const { round, buyTicket, isPending, isConfirming } = useLottery(0); // Current round is 0
+  const { round, buyTicket, isPending, isConfirming, hash, isConfirmed, refetchUserTickets } = useLottery(0); // Current round is 0
   const { toast } = useToast();
 
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [isEncrypting, setIsEncrypting] = useState(false);
+  const [purchasedNumbers, setPurchasedNumbers] = useState<number[]>([]);
 
   const maxNumbers = 6;
   const totalNumbers = 49;
+
+  // Watch for transaction confirmation and show success toast
+  useEffect(() => {
+    if (isConfirmed && hash && purchasedNumbers.length > 0) {
+      toast({
+        title: "🎫 Ticket Purchased Successfully!",
+        description: (
+          <div className="mt-2">
+            <p className="mb-2">Your numbers (now encrypted on-chain): {purchasedNumbers.join(", ")}</p>
+            <a
+              href={`https://sepolia.etherscan.io/tx/${hash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline text-sm flex items-center gap-1"
+            >
+              View on Etherscan →
+            </a>
+          </div>
+        ),
+      });
+      setPurchasedNumbers([]);
+      refetchUserTickets();
+    }
+  }, [isConfirmed, hash, purchasedNumbers, toast, refetchUserTickets]);
 
   const toggleNumber = (num: number) => {
     if (selectedNumbers.includes(num)) {
@@ -104,22 +129,38 @@ const LotterySelector = () => {
         description: "Submitting your encrypted ticket to the blockchain...",
       });
 
+      // Store numbers for success message later
+      setPurchasedNumbers([...selectedNumbers]);
+
       // Buy ticket on-chain
       await buyTicket(encryptedNumbers, proofs, round.ticketPrice);
-
-      toast({
-        title: "Ticket purchased successfully!",
-        description: `Your lucky numbers: ${selectedNumbers.join(", ")}`,
-      });
 
       // Clear selection
       setSelectedNumbers([]);
     } catch (error) {
       console.error("Ticket purchase failed:", error);
       setIsEncrypting(false);
+
+      // Show detailed error message
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+
       toast({
-        title: "Purchase failed",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
+        title: "❌ Purchase Failed",
+        description: (
+          <div className="mt-2">
+            <p className="mb-2">{errorMessage}</p>
+            {hash && (
+              <a
+                href={`https://sepolia.etherscan.io/tx/${hash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline text-sm flex items-center gap-1"
+              >
+                View failed transaction on Etherscan →
+              </a>
+            )}
+          </div>
+        ),
         variant: "destructive",
       });
     }

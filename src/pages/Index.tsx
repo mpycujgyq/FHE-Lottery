@@ -1,7 +1,6 @@
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import LotterySelector from "@/components/LotterySelector";
-import HowItWorks from "@/components/HowItWorks";
 import MyTickets from "@/components/MyTickets";
 import RecentWinners from "@/components/RecentWinners";
 
@@ -12,7 +11,6 @@ const Index = () => {
       <main className="pt-16">
         <Hero />
         <LotterySelector />
-        <HowItWorks />
         <MyTickets />
         <RecentWinners />
       </main>
